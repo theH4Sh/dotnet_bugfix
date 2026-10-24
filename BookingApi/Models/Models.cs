@@ -1,3 +1,5 @@
+using System.Text.Json.Serialization;
+
 namespace BookingApi.Models;
 
 public enum Role { Customer = 1, Performer = 2 }
@@ -8,6 +10,7 @@ public class User
 {
     public long Id { get; set; }
     public string Email { get; set; } = "";
+    [JsonIgnore]
     public string Password { get; set; } = "";
     public string Name { get; set; } = "";
     public Role Role { get; set; }
@@ -37,5 +40,6 @@ public class Payment
 }
 
 public record RegisterRequest(string Email, string Password, string Name, Role Role);
+public record UserResponse(long Id, string Email, string Name, Role Role);
 public record LoginRequest(string Email, string Password);
 public record CreateBookingRequest(string PilgrimName, decimal Amount);

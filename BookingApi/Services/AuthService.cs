@@ -10,18 +10,59 @@ namespace BookingApi.Services;
 
 public class AuthService(AppDbContext db, IConfiguration config)
 {
-    public async Task<User> RegisterAsync(RegisterRequest r)
+    public async Task<UserResponse> RegisterAsync(RegisterRequest r)
     {
-        var user = new User { Email = r.Email, Password = r.Password, Name = r.Name, Role = r.Role };
+        if (string.IsNullOrWhiteSpace(r.Email))
+            throw new ArgumentException("Email is required.");
+        if (string.IsNullOrWhiteSpace(r.Password))
+            throw new ArgumentException("Password is required.");
+
+        var normalizedEmail = r.Email.Trim().ToLowerInvariant();
+        var exists = await db.Users.AnyAsync(u => u.Email.ToLower() == normalizedEmail);
+        if (exists)
+            throw new InvalidOperationException("Email is already registered.");
+
+        var hashedPassword = BCrypt.Net.BCrypt.HashPassword(r.Password);
+        var user = new User
+        {
+            Email = normalizedEmail,
+            Password = hashedPassword,
+            Name = r.Name?.Trim() ?? "",
+            Role = r.Role
+        };
+
         db.Users.Add(user);
         await db.SaveChangesAsync();
-        return user;
+
+        return new UserResponse(user.Id, user.Email, user.Name, user.Role);
     }
 
     public async Task<string?> LoginAsync(LoginRequest r)
     {
-        var user = await db.Users.FirstOrDefaultAsync(u => u.Email == r.Email && u.Password == r.Password);
+        if (string.IsNullOrWhiteSpace(r.Email) || string.IsNullOrWhiteSpace(r.Password))
+            return null;
+
+        var normalizedEmail = r.Email.Trim().ToLowerInvariant();
+        var user = await db.Users.FirstOrDefaultAsync(u => u.Email.ToLower() == normalizedEmail);
         if (user is null) return null;
+
+        bool isValid = false;
+        try
+        {
+            isValid = BCrypt.Net.BCrypt.Verify(r.Password, user.Password);
+        }
+        catch
+        {
+            // Fallback for legacy plaintext passwords, if any
+            if (user.Password == r.Password)
+            {
+                isValid = true;
+                user.Password = BCrypt.Net.BCrypt.HashPassword(r.Password);
+                await db.SaveChangesAsync();
+            }
+        }
+
+        if (!isValid) return null;
 
         var claims = new[]
         {

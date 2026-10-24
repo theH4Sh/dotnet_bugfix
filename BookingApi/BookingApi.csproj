@@ -6,6 +6,7 @@
     <UserSecretsId>b31391e2-4722-4ba5-a03f-21fd4cab0ea2</UserSecretsId>
   </PropertyGroup>
   <ItemGroup>
+    <PackageReference Include="BCrypt.Net-Next" Version="4.2.0" />
     <PackageReference Include="Microsoft.EntityFrameworkCore.Sqlite" Version="10.0.0" />
     <PackageReference Include="Microsoft.AspNetCore.Authentication.JwtBearer" Version="10.0.0" />
   </ItemGroup>

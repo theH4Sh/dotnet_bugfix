@@ -40,7 +40,21 @@ app.UseAuthorization();
 static long UserId(ClaimsPrincipal u) => long.Parse(u.FindFirstValue(ClaimTypes.NameIdentifier)!);
 
 app.MapPost("/auth/register", async (RegisterRequest r, AuthService auth) =>
-    Results.Ok(await auth.RegisterAsync(r)));
+{
+    try
+    {
+        var user = await auth.RegisterAsync(r);
+        return Results.Ok(user);
+    }
+    catch (ArgumentException ex)
+    {
+        return Results.BadRequest(new { error = ex.Message });
+    }
+    catch (InvalidOperationException ex)
+    {
+        return Results.Conflict(new { error = ex.Message });
+    }
+});
 
 app.MapPost("/auth/login", async (LoginRequest r, AuthService auth) =>
 {
@@ -72,3 +86,6 @@ bookings.MapPost("/{id:long}/accept", async (long id, ClaimsPrincipal u, Booking
     Results.Ok(await s.AcceptAsync(UserId(u), id)));
 
 app.Run();
+
+public partial class Program { }
+

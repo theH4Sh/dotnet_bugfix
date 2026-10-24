@@ -11,6 +11,7 @@ public class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(op
 
     protected override void OnModelCreating(ModelBuilder m)
     {
+        m.Entity<User>().HasIndex(u => u.Email).IsUnique();
         m.Entity<Booking>().HasOne(b => b.Customer).WithMany().HasForeignKey(b => b.CustomerId).OnDelete(DeleteBehavior.Restrict);
         m.Entity<Booking>().HasOne(b => b.Performer).WithMany().HasForeignKey(b => b.PerformerId).OnDelete(DeleteBehavior.Restrict);
     }
