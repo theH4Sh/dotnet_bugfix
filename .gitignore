@@ -6,4 +6,5 @@ obj/
 .env
 .env.*
 !.env.example
-
+frontend/
+appsettings.Production.json
