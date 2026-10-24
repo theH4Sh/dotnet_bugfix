@@ -6,15 +6,20 @@ namespace BookingApi.Services;
 
 public class BookingService(AppDbContext db, PaymentGateway gateway)
 {
+    public const decimal FixedBookingPrice = 500m;
+
     public async Task<Booking> CreateAsync(long userId, CreateBookingRequest r)
     {
+        if (string.IsNullOrWhiteSpace(r.PilgrimName))
+            throw new ArgumentException("Pilgrim name is required.");
+
         var booking = new Booking
         {
             CustomerId = userId,
-            PilgrimName = r.PilgrimName,
-            Amount = r.Amount,
+            PilgrimName = r.PilgrimName.Trim(),
+            Amount = FixedBookingPrice,
             Status = BookingStatus.PendingPayment,
-            CreatedAt = DateTime.Now
+            CreatedAt = DateTime.UtcNow
         };
         db.Bookings.Add(booking);
         await db.SaveChangesAsync();

@@ -65,7 +65,17 @@ app.MapPost("/auth/login", async (LoginRequest r, AuthService auth) =>
 var bookings = app.MapGroup("/bookings").RequireAuthorization();
 
 bookings.MapPost("/", async (CreateBookingRequest r, ClaimsPrincipal u, BookingService s) =>
-    Results.Ok(await s.CreateAsync(UserId(u), r)));
+{
+    try
+    {
+        var booking = await s.CreateAsync(UserId(u), r);
+        return Results.Ok(booking);
+    }
+    catch (ArgumentException ex)
+    {
+        return Results.BadRequest(new { error = ex.Message });
+    }
+});
 
 bookings.MapGet("/mine", (ClaimsPrincipal u, BookingService s, int page = 1, int size = 10) =>
     Results.Ok(s.ListMine(UserId(u), page, size)));
