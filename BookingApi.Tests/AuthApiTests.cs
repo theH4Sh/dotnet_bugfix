@@ -23,6 +23,7 @@ public class AuthApiTests : IClassFixture<WebApplicationFactory<Program>>, IDisp
 
         _factory = factory.WithWebHostBuilder(builder =>
         {
+            builder.UseSetting("ConnectionStrings:DefaultConnection", "DataSource=:memory:");
             builder.ConfigureServices(services =>
             {
                 var descriptor = services.SingleOrDefault(d => d.ServiceType == typeof(DbContextOptions<AppDbContext>));

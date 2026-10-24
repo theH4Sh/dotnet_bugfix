@@ -12,7 +12,17 @@ using Microsoft.IdentityModel.Tokens;
 
 var builder = WebApplication.CreateBuilder(args);
 
-builder.Services.AddDbContext<AppDbContext>(o => o.UseSqlite(builder.Configuration.GetConnectionString("Default")));
+var connectionString = builder.Configuration.GetConnectionString("DefaultConnection")
+    ?? builder.Configuration.GetConnectionString("Default");
+
+if (connectionString != null && (connectionString.Contains("Data Source=", StringComparison.OrdinalIgnoreCase) || connectionString.Contains("DataSource=", StringComparison.OrdinalIgnoreCase)))
+{
+    builder.Services.AddDbContext<AppDbContext>(o => o.UseSqlite(connectionString));
+}
+else
+{
+    builder.Services.AddDbContext<AppDbContext>(o => o.UseNpgsql(connectionString));
+}
 builder.Services.AddSingleton<IFirebaseTokenVerifier, FirebaseTokenVerifier>();
 builder.Services.AddScoped<AuthService>();
 builder.Services.AddScoped<BookingService>();
@@ -57,7 +67,9 @@ if (FirebaseApp.DefaultInstance == null)
     }
 }
 
-var jwtKey = builder.Configuration["Jwt:Key"]!;
+var jwtKey = builder.Configuration["Jwt:Key"]
+    ?? builder.Configuration["JWT_KEY"]
+    ?? builder.Configuration["JWT_SECRET"];
 builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme).AddJwtBearer(o =>
 {
     o.TokenValidationParameters = new TokenValidationParameters
@@ -69,12 +81,22 @@ builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme).AddJw
     };
 });
 builder.Services.AddAuthorization();
+builder.Services.AddCors(options =>
+{
+    options.AddDefaultPolicy(policy =>
+    {
+        policy.AllowAnyOrigin()
+              .AllowAnyHeader()
+              .AllowAnyMethod();
+    });
+});
 
 var app = builder.Build();
 
 using (var scope = app.Services.CreateScope())
     scope.ServiceProvider.GetRequiredService<AppDbContext>().Database.EnsureCreated();
 
+app.UseCors();
 app.UseAuthentication();
 app.UseAuthorization();
 
