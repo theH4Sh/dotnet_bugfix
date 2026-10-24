@@ -39,7 +39,7 @@ public class BookingService(AppDbContext db, PaymentGateway gateway)
             : db.Bookings.Where(b => b.CustomerId == userId);
 
         var bookings = await query
-            .OrderBy(b => b.Id)
+            .OrderByDescending(b => b.Id)
             .Skip((page - 1) * size)
             .Take(size)
             .ToListAsync();
@@ -62,7 +62,7 @@ public class BookingService(AppDbContext db, PaymentGateway gateway)
 
         var bookings = await db.Bookings
             .Where(b => b.Status == BookingStatus.Paid && b.PerformerId == null)
-            .OrderBy(b => b.Id)
+            .OrderByDescending(b => b.Id)
             .Skip((page - 1) * size)
             .Take(size)
             .ToListAsync();

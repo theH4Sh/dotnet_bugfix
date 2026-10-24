@@ -6,4 +6,4 @@ obj/
 .env
 .env.*
 !.env.example
-frontend/
+
