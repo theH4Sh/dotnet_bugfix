@@ -85,7 +85,7 @@ builder.Services.AddCors(options =>
 {
     options.AddDefaultPolicy(policy =>
     {
-        policy.AllowAnyOrigin("https://dotnet-bugfix-frontend.onrender.com")
+        policy.WithOrigins("https://dotnet-bugfix-frontend.onrender.com")
               .AllowAnyHeader()
               .AllowAnyMethod();
     });
