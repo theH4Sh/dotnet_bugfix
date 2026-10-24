@@ -5,11 +5,11 @@ Auth Bugs:
 
     - tf is role 3? and why does it responds with 200 Ok, 1 = customer, 2 = performer... why we letting in 3, oh wait we shouldn't even trust the user input in the first place
 
-    - Also lets you register with the same email...
+    - Also lets you register with the same email...  ----- X FIXED
 
-    - AH HELL NAH... DAWG...PASSWORDS ARE STORED IN PLAINTEXT
+    - AH HELL NAH... DAWG...PASSWORDS ARE STORED IN PLAINTEXT --- X FIXED
 
-    - ALSO WHY WE RETURNING THE PASSWORD IN RESPONSE?
+    - ALSO WHY WE RETURNING THE PASSWORD IN RESPONSE? --- X FIXEDs
 
     - No password validation found... like there's no criteria for the password i.e 8 words, uppercase, lowercase none of that sh-
 
@@ -20,3 +20,5 @@ BOOKING ROUTES:
     - lets the user choose the amount...
     - the user is able to accept their own booking which shouldn't be allowed...
     - the user is able to cancel another user's booking
+    - user is able to cancel accepted booking
+    - user is able to cancel paid bookings
