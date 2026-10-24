@@ -4,6 +4,8 @@ using BookingApi.Data;
 using BookingApi.Jobs;
 using BookingApi.Models;
 using BookingApi.Services;
+using FirebaseAdmin;
+using Google.Apis.Auth.OAuth2;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
@@ -11,10 +13,49 @@ using Microsoft.IdentityModel.Tokens;
 var builder = WebApplication.CreateBuilder(args);
 
 builder.Services.AddDbContext<AppDbContext>(o => o.UseSqlite(builder.Configuration.GetConnectionString("Default")));
+builder.Services.AddSingleton<IFirebaseTokenVerifier, FirebaseTokenVerifier>();
 builder.Services.AddScoped<AuthService>();
 builder.Services.AddScoped<BookingService>();
 builder.Services.AddSingleton<PaymentGateway>();
 builder.Services.AddHostedService<ExpiryJob>();
+
+var firebaseServiceAccountJson = Environment.GetEnvironmentVariable("FIREBASE_SERVICE_ACCOUNT_JSON")
+    ?? builder.Configuration["FIREBASE_SERVICE_ACCOUNT_JSON"]
+    ?? builder.Configuration["Firebase:ServiceAccountJson"];
+
+var firebaseProjectId = Environment.GetEnvironmentVariable("FIREBASE_PROJECT_ID")
+    ?? builder.Configuration["FIREBASE_PROJECT_ID"]
+    ?? builder.Configuration["Firebase:ProjectId"]
+    ?? "dotnet-bugs";
+
+if (FirebaseApp.DefaultInstance == null)
+{
+    try
+    {
+#pragma warning disable CS0618
+        GoogleCredential? credential = null;
+        if (!string.IsNullOrWhiteSpace(firebaseServiceAccountJson))
+        {
+            if (firebaseServiceAccountJson.TrimStart().StartsWith("{"))
+                credential = GoogleCredential.FromJson(firebaseServiceAccountJson);
+            else if (File.Exists(firebaseServiceAccountJson))
+                credential = GoogleCredential.FromFile(firebaseServiceAccountJson);
+        }
+
+        credential ??= GoogleCredential.GetApplicationDefault();
+
+        FirebaseApp.Create(new AppOptions
+        {
+            Credential = credential,
+            ProjectId = firebaseProjectId
+        });
+#pragma warning restore CS0618
+    }
+    catch
+    {
+        // Safe fallback for testing or when credentials are not yet configured
+    }
+}
 
 var jwtKey = builder.Configuration["Jwt:Key"]!;
 builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme).AddJwtBearer(o =>
@@ -60,6 +101,31 @@ app.MapPost("/auth/login", async (LoginRequest r, AuthService auth) =>
 {
     var token = await auth.LoginAsync(r);
     return token is null ? Results.Unauthorized() : Results.Ok(new { token });
+});
+
+app.MapPost("/auth/firebase", async (FirebaseLoginRequest r, AuthService auth) =>
+{
+    try
+    {
+        var token = await auth.LoginWithFirebaseAsync(r.IdToken);
+        return Results.Ok(new { token });
+    }
+    catch (UnauthorizedAccessException ex)
+    {
+        return Results.Json(new { error = ex.Message }, statusCode: StatusCodes.Status403Forbidden);
+    }
+    catch (SecurityTokenException ex)
+    {
+        return Results.Json(new { error = ex.Message }, statusCode: StatusCodes.Status401Unauthorized);
+    }
+    catch (ArgumentException ex)
+    {
+        return Results.BadRequest(new { error = ex.Message });
+    }
+    catch (InvalidOperationException ex)
+    {
+        return Results.BadRequest(new { error = ex.Message });
+    }
 });
 
 var bookings = app.MapGroup("/bookings").RequireAuthorization();

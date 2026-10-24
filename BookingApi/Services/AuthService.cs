@@ -8,8 +8,10 @@ using Microsoft.IdentityModel.Tokens;
 
 namespace BookingApi.Services;
 
-public class AuthService(AppDbContext db, IConfiguration config)
+public class AuthService(AppDbContext db, IConfiguration config, IFirebaseTokenVerifier? firebaseVerifier = null)
 {
+    private readonly IFirebaseTokenVerifier _firebaseVerifier = firebaseVerifier ?? new FirebaseTokenVerifier();
+
     public async Task<UserResponse> RegisterAsync(RegisterRequest r)
     {
         if (string.IsNullOrWhiteSpace(r.Email))
@@ -64,6 +66,60 @@ public class AuthService(AppDbContext db, IConfiguration config)
 
         if (!isValid) return null;
 
+        return GenerateJwtToken(user);
+    }
+
+    public async Task<string> LoginWithFirebaseAsync(string idToken)
+    {
+        if (string.IsNullOrWhiteSpace(idToken))
+            throw new ArgumentException("ID token is required.");
+
+        FirebaseTokenResult tokenClaims;
+        try
+        {
+            tokenClaims = await _firebaseVerifier.VerifyTokenAsync(idToken);
+        }
+        catch (Exception ex)
+        {
+            throw new SecurityTokenException("Invalid Firebase ID token.", ex);
+        }
+
+        if (string.IsNullOrWhiteSpace(tokenClaims.Email))
+            throw new InvalidOperationException("Firebase token does not contain an email address.");
+
+        var normalizedEmail = tokenClaims.Email.Trim().ToLowerInvariant();
+        var existingUser = await db.Users.FirstOrDefaultAsync(u => u.Email.ToLower() == normalizedEmail);
+
+        if (existingUser != null)
+        {
+            // Never let a Firebase login take over a Performer account by email
+            if (existingUser.Role == Role.Performer)
+                throw new UnauthorizedAccessException("Firebase sign-in cannot link to a Performer account.");
+
+            // Only link to an existing account if the email is verified
+            if (!tokenClaims.EmailVerified)
+                throw new SecurityTokenException("Email must be verified in Firebase to link to an existing account.");
+
+            return GenerateJwtToken(existingUser);
+        }
+
+        // User does not exist -> create new Customer
+        var newUser = new User
+        {
+            Email = normalizedEmail,
+            Name = !string.IsNullOrWhiteSpace(tokenClaims.Name) ? tokenClaims.Name.Trim() : "Customer",
+            Role = Role.Customer,
+            Password = BCrypt.Net.BCrypt.HashPassword(Guid.NewGuid().ToString("N"))
+        };
+
+        db.Users.Add(newUser);
+        await db.SaveChangesAsync();
+
+        return GenerateJwtToken(newUser);
+    }
+
+    private string GenerateJwtToken(User user)
+    {
         var claims = new[]
         {
             new Claim(ClaimTypes.NameIdentifier, user.Id.ToString()),

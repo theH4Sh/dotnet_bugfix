@@ -42,4 +42,5 @@ public class Payment
 public record RegisterRequest(string Email, string Password, string Name, Role Role);
 public record UserResponse(long Id, string Email, string Name, Role Role);
 public record LoginRequest(string Email, string Password);
+public record FirebaseLoginRequest(string IdToken);
 public record CreateBookingRequest(string PilgrimName, decimal? Amount = null);
