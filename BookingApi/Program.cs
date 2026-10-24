@@ -77,23 +77,69 @@ bookings.MapPost("/", async (CreateBookingRequest r, ClaimsPrincipal u, BookingS
     }
 });
 
-bookings.MapGet("/mine", (ClaimsPrincipal u, BookingService s, int page = 1, int size = 10) =>
-    Results.Ok(s.ListMine(UserId(u), page, size)));
+bookings.MapGet("/mine", async (ClaimsPrincipal u, BookingService s, int page = 1, int size = 10) =>
+    Results.Ok(await s.ListMineAsync(UserId(u), page, size)));
 
-bookings.MapGet("/{id:long}", async (long id, BookingService s) =>
+bookings.MapGet("/available", async (BookingService s, int page = 1, int size = 10) =>
+    Results.Ok(await s.ListAvailablePaidAsync(page, size)));
+
+bookings.MapGet("/{id:long}", async (long id, ClaimsPrincipal u, BookingService s) =>
 {
-    var booking = await s.GetAsync(id);
-    return booking is null ? Results.NotFound() : Results.Ok(booking);
+    try
+    {
+        var booking = await s.GetAsync(UserId(u), id);
+        return booking is null ? Results.NotFound() : Results.Ok(booking);
+    }
+    catch (UnauthorizedAccessException ex)
+    {
+        return Results.Json(new { error = ex.Message }, statusCode: StatusCodes.Status403Forbidden);
+    }
 });
 
 bookings.MapPost("/{id:long}/pay", (long id, ClaimsPrincipal u, BookingService s) =>
     Results.Ok(s.Pay(UserId(u), id)));
 
 bookings.MapPost("/{id:long}/cancel", async (long id, ClaimsPrincipal u, BookingService s) =>
-    Results.Ok(await s.CancelAsync(UserId(u), id)));
+{
+    try
+    {
+        var booking = await s.CancelAsync(UserId(u), id);
+        return Results.Ok(booking);
+    }
+    catch (KeyNotFoundException ex)
+    {
+        return Results.NotFound(new { error = ex.Message });
+    }
+    catch (UnauthorizedAccessException ex)
+    {
+        return Results.Json(new { error = ex.Message }, statusCode: StatusCodes.Status403Forbidden);
+    }
+    catch (InvalidOperationException ex)
+    {
+        return Results.BadRequest(new { error = ex.Message });
+    }
+});
 
 bookings.MapPost("/{id:long}/accept", async (long id, ClaimsPrincipal u, BookingService s) =>
-    Results.Ok(await s.AcceptAsync(UserId(u), id)));
+{
+    try
+    {
+        var booking = await s.AcceptAsync(UserId(u), id);
+        return Results.Ok(booking);
+    }
+    catch (KeyNotFoundException ex)
+    {
+        return Results.NotFound(new { error = ex.Message });
+    }
+    catch (UnauthorizedAccessException ex)
+    {
+        return Results.Json(new { error = ex.Message }, statusCode: StatusCodes.Status403Forbidden);
+    }
+    catch (InvalidOperationException ex)
+    {
+        return Results.BadRequest(new { error = ex.Message });
+    }
+});
 
 app.Run();
 

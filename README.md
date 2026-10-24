@@ -18,7 +18,8 @@ Auth Bugs:
 BOOKING ROUTES:
     - the api accepts expired tokens to get user bookings...
     - shouldn't let the user choose the amount... X FIXEDs
-    - the user is able to accept their own booking which shouldn't be allowed...
-    - the user is able to cancel another user's booking
-    - user is able to cancel accepted booking
-    - user is able to cancel paid bookings
+    - the user is able to accept their own booking which shouldn't be allowed... -- FIXED
+    - the user is able to cancel another user's booking -- FIXED
+    - user is able to cancel accepted booking -- FIXED
+    - user is able to cancel paid bookings -- FIXED
+    - Performers should only be able to accept paid bookings -- X FIXED
