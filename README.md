@@ -29,3 +29,5 @@ BOOKING ROUTES:
     - user is able to cancel paid bookings -- FIXED
     
     - Performers should only be able to accept paid bookings -- X FIXED
+
+    - User is able to pay twice for the same booking -- X FIXED
