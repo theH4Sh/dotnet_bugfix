@@ -12,5 +12,7 @@ npm install
 npm run dev
 ```
 
-The Vite development server proxies `/auth` and `/bookings` requests to the API.
-Set `VITE_API_URL` if the API is hosted at a different origin.
+The frontend reads `VITE_API_URL` from `frontend/.env`. Set it to the API
+origin (for example, `http://localhost:5000`). When it is unset,
+the Vite development server proxies `/auth` and `/bookings` to
+`http://localhost:5000`.
