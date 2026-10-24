@@ -338,6 +338,23 @@ input:focus {
   color: #842029;
 }
 
+.health-status {
+  padding: 0.25rem 0.65rem;
+  border-radius: 12px;
+  font-size: 0.8rem;
+  font-weight: 600;
+}
+
+.health-healthy {
+  background: #d1e7dd;
+  color: #0f5132;
+}
+
+.health-unavailable {
+  background: #f8d7da;
+  color: #842029;
+}
+
 .empty-text {
   color: #6c757d;
   font-style: italic;

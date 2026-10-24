@@ -85,7 +85,9 @@ builder.Services.AddCors(options =>
 {
     options.AddDefaultPolicy(policy =>
     {
-        policy.WithOrigins("https://dotnet-bugfix-frontend.onrender.com")
+        policy.WithOrigins(
+                  "https://dotnet-bugfix-frontend.onrender.com",
+                  "http://localhost:5173")
               .AllowAnyHeader()
               .AllowAnyMethod();
     });
@@ -101,6 +103,38 @@ app.UseAuthentication();
 app.UseAuthorization();
 
 static long UserId(ClaimsPrincipal u) => long.Parse(u.FindFirstValue(ClaimTypes.NameIdentifier)!);
+
+app.MapGet("/health", async Task<IResult> (AppDbContext db, CancellationToken cancellationToken) =>
+{
+    var databaseAvailable = await db.Database.CanConnectAsync(cancellationToken);
+    if (!databaseAvailable)
+    {
+        return Results.Json(
+            new { status = "unhealthy", database = "unavailable", recentBookings = Array.Empty<object>() },
+            statusCode: StatusCodes.Status503ServiceUnavailable);
+    }
+
+    var recentBookings = await db.Bookings
+        .AsNoTracking()
+        .OrderByDescending(booking => booking.CreatedAt)
+        .ThenByDescending(booking => booking.Id)
+        .Take(5)
+        .Select(booking => new HealthBookingSummary(
+            booking.Status,
+            new DateTimeOffset(DateTime.SpecifyKind(booking.CreatedAt, DateTimeKind.Utc))))
+        .ToListAsync(cancellationToken);
+
+    return Results.Ok(new
+    {
+        status = "healthy",
+        database = "connected",
+        recentBookings
+    });
+})
+    .AllowAnonymous()
+    .WithName("GetHealth")
+    .WithSummary("Check API and database health")
+    .WithDescription("Returns database connectivity and the five latest bookings without personal details.");
 
 app.MapPost("/auth/register", async (RegisterRequest r, AuthService auth) =>
 {

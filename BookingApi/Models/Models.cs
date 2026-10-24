@@ -44,3 +44,7 @@ public record UserResponse(long Id, string Email, string Name, Role Role);
 public record LoginRequest(string Email, string Password);
 public record FirebaseLoginRequest(string IdToken);
 public record CreateBookingRequest(string PilgrimName, decimal? Amount = null);
+/// <summary>Non-identifying booking activity included in the public health response.</summary>
+public sealed record HealthBookingSummary(
+    BookingStatus Status,
+    DateTimeOffset CreatedAt);

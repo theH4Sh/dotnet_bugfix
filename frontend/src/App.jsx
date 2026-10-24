@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import { useDispatch, useSelector } from 'react-redux'
 import { Link, Navigate, Route, Routes, useLocation, useNavigate, useParams } from 'react-router-dom'
+import { apiRequest } from './api'
 import { clearAuthError, login, logout, register } from './authSlice'
 import {
   acceptBooking,
@@ -226,6 +227,91 @@ function Alerts() {
   )
 }
 
+function HealthAndRecentBookings() {
+  const [health, setHealth] = useState({ loading: true, error: null })
+  const [recent, setRecent] = useState({ loading: true, bookings: [], error: null })
+
+  useEffect(() => {
+    let isCurrent = true
+
+    apiRequest('/health')
+      .then((result) => {
+        if (isCurrent) {
+          setHealth({ loading: false, error: null, result })
+          setRecent({
+            loading: false,
+            bookings: Array.isArray(result.recentBookings) ? result.recentBookings : [],
+            error: null,
+          })
+        }
+      })
+      .catch((error) => {
+        if (isCurrent) {
+          setHealth({ loading: false, error: error.message })
+          setRecent({ loading: false, bookings: [], error: error.message })
+        }
+      })
+
+    return () => {
+      isCurrent = false
+    }
+  }, [])
+
+  return (
+    <section className="box">
+      <div className="section-header">
+        <h2>Service Health</h2>
+        {health.loading ? (
+          <span>Checking…</span>
+        ) : health.error ? (
+          <span className="health-status health-unavailable">Unavailable</span>
+        ) : health.result?.status === 'healthy' ? (
+          <span className="health-status health-healthy">
+            API and database connected
+          </span>
+        ) : (
+          <span className="health-status health-unavailable">Unavailable</span>
+        )}
+      </div>
+      {health.error && <p className="text-muted">{health.error}</p>}
+
+      <h3>Recent Bookings</h3>
+      {recent.loading ? (
+        <p>Loading recent bookings…</p>
+      ) : recent.error ? (
+        <p className="text-muted">{recent.error}</p>
+      ) : recent.bookings.length === 0 ? (
+        <p className="empty-text">No recent bookings.</p>
+      ) : (
+        <div className="table-responsive">
+          <table className="data-table">
+            <thead>
+              <tr>
+                <th>Booking</th>
+                <th>Status</th>
+                <th>Created</th>
+              </tr>
+            </thead>
+            <tbody>
+              {recent.bookings.map((booking, index) => (
+                <tr key={`${booking.createdAt}-${index}`}>
+                  <td>Recent booking {index + 1}</td>
+                  <td>
+                    <span className={`status-badge status-${booking.status}`}>
+                      {statusLabel(booking.status)}
+                    </span>
+                  </td>
+                  <td>{new Date(booking.createdAt).toLocaleString()}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )}
+    </section>
+  )
+}
+
 function PaymentCheckoutModal({ booking, onClose }) {
   const dispatch = useDispatch()
   const { actionId, actionType } = useSelector((state) => state.bookings)
@@ -334,6 +420,7 @@ function CustomerDashboard() {
   return (
     <main className="container">
       <Alerts />
+      <HealthAndRecentBookings />
 
       {payingBooking && (
         <PaymentCheckoutModal
@@ -494,6 +581,7 @@ function PerformerDashboard({ view = 'available' }) {
   return (
     <main className="container">
       <Alerts />
+      <HealthAndRecentBookings />
 
       <div className="tab-buttons">
         <Link
