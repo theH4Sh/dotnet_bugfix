@@ -103,29 +103,43 @@ public class BookingService(AppDbContext db, PaymentGateway gateway)
         return booking;
     }
 
-    public Payment Pay(long userId, long id)
+    public async Task<Payment> PayAsync(long userId, long id)
     {
-        var booking = db.Bookings.First(b => b.Id == id && b.CustomerId == userId);
+        var claimed = await db.Bookings
+            .Where(b => b.Id == id && b.CustomerId == userId && b.Status == BookingStatus.PendingPayment)
+            .ExecuteUpdateAsync(s => s.SetProperty(b => b.Status, BookingStatus.PaymentProcessing));
 
-        var gatewayRef = gateway.ChargeAsync(booking.Amount).Result;
+        if (claimed == 0)
+        {
+            var booking = await db.Bookings.AsNoTracking().FirstOrDefaultAsync(b => b.Id == id);
+            if (booking is null)
+                throw new KeyNotFoundException("Booking not found.");
+            if (booking.CustomerId != userId)
+                throw new UnauthorizedAccessException("You are not authorized to pay for this booking.");
+
+            throw new InvalidOperationException("Booking has already been paid or a payment is in progress.");
+        }
+
+        var claimedBooking = await db.Bookings.SingleAsync(b => b.Id == id);
+        var gatewayRef = await gateway.ChargeAsync(claimedBooking.Amount);
 
         var payment = new Payment
         {
-            BookingId = booking.Id,
-            Amount = booking.Amount,
+            BookingId = claimedBooking.Id,
+            Amount = claimedBooking.Amount,
             GatewayRef = gatewayRef,
             CreatedAt = DateTime.UtcNow
         };
         db.Payments.Add(payment);
-        booking.Status = BookingStatus.Paid;
-        booking.PaidAt = DateTime.UtcNow;
-        db.SaveChanges();
+        claimedBooking.Status = BookingStatus.Paid;
+        claimedBooking.PaidAt = DateTime.UtcNow;
+        await db.SaveChangesAsync();
         return payment;
     }
 
     public async Task<Booking> CancelAsync(long userId, long id)
     {
-        var booking = await db.Bookings.FirstOrDefaultAsync(b => b.Id == id);
+        var booking = await db.Bookings.AsNoTracking().FirstOrDefaultAsync(b => b.Id == id);
         if (booking is null)
             throw new KeyNotFoundException("Booking not found.");
 
@@ -138,8 +152,18 @@ public class BookingService(AppDbContext db, PaymentGateway gateway)
         if (booking.Status != BookingStatus.PendingPayment && booking.Status != BookingStatus.Paid)
             throw new InvalidOperationException($"Cannot cancel a booking with status '{booking.Status}'.");
 
+        var cancelled = await db.Bookings
+            .Where(b =>
+                b.Id == id &&
+                b.CustomerId == userId &&
+                b.PerformerId == null &&
+                (b.Status == BookingStatus.PendingPayment || b.Status == BookingStatus.Paid))
+            .ExecuteUpdateAsync(s => s.SetProperty(b => b.Status, BookingStatus.Cancelled));
+
+        if (cancelled == 0)
+            throw new InvalidOperationException("Booking status changed before it could be cancelled.");
+
         booking.Status = BookingStatus.Cancelled;
-        await db.SaveChangesAsync();
         return booking;
     }
 

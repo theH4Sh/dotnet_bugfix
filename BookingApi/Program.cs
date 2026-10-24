@@ -184,8 +184,25 @@ bookings.MapGet("/{id:long}", async (long id, ClaimsPrincipal u, BookingService 
     }
 });
 
-bookings.MapPost("/{id:long}/pay", (long id, ClaimsPrincipal u, BookingService s) =>
-    Results.Ok(s.Pay(UserId(u), id)));
+bookings.MapPost("/{id:long}/pay", async (long id, ClaimsPrincipal u, BookingService s) =>
+{
+    try
+    {
+        return Results.Ok(await s.PayAsync(UserId(u), id));
+    }
+    catch (KeyNotFoundException ex)
+    {
+        return Results.NotFound(new { error = ex.Message });
+    }
+    catch (UnauthorizedAccessException ex)
+    {
+        return Results.Json(new { error = ex.Message }, statusCode: StatusCodes.Status403Forbidden);
+    }
+    catch (InvalidOperationException ex)
+    {
+        return Results.Conflict(new { error = ex.Message });
+    }
+});
 
 bookings.MapPost("/{id:long}/cancel", async (long id, ClaimsPrincipal u, BookingService s) =>
 {
@@ -232,4 +249,3 @@ bookings.MapPost("/{id:long}/accept", async (long id, ClaimsPrincipal u, Booking
 app.Run();
 
 public partial class Program { }
-

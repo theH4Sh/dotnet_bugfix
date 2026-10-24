@@ -25,21 +25,13 @@ public class ExpiryJob(
 
                 var cutoff = DateTime.UtcNow.AddMinutes(-30);
 
-                var expired = await db.Bookings
+                await db.Bookings
                     .Where(b =>
                         b.Status == BookingStatus.PendingPayment &&
                         b.CreatedAt < cutoff)
-                    .ToListAsync(stoppingToken);
-
-                foreach (var booking in expired)
-                {
-                    booking.Status = BookingStatus.Expired;
-                }
-
-                if (expired.Count > 0)
-                {
-                    await db.SaveChangesAsync(stoppingToken);
-                }
+                    .ExecuteUpdateAsync(
+                        s => s.SetProperty(b => b.Status, BookingStatus.Expired),
+                        stoppingToken);
             }
             catch (OperationCanceledException)
                 when (stoppingToken.IsCancellationRequested)

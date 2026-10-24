@@ -25,6 +25,7 @@ function statusLabel(status) {
     4: 'Completed',
     5: 'Cancelled',
     6: 'Expired',
+    7: 'Payment Processing',
   }
   return labels[status] ?? `Status #${status}`
 }

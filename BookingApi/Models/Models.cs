@@ -4,7 +4,7 @@ namespace BookingApi.Models;
 
 public enum Role { Customer = 1, Performer = 2 }
 
-public enum BookingStatus { PendingPayment = 1, Paid = 2, Accepted = 3, Completed = 4, Cancelled = 5, Expired = 6 }
+public enum BookingStatus { PendingPayment = 1, Paid = 2, Accepted = 3, Completed = 4, Cancelled = 5, Expired = 6, PaymentProcessing = 7 }
 
 public class User
 {

@@ -14,5 +14,6 @@ public class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(op
         m.Entity<User>().HasIndex(u => u.Email).IsUnique();
         m.Entity<Booking>().HasOne(b => b.Customer).WithMany().HasForeignKey(b => b.CustomerId).OnDelete(DeleteBehavior.Restrict);
         m.Entity<Booking>().HasOne(b => b.Performer).WithMany().HasForeignKey(b => b.PerformerId).OnDelete(DeleteBehavior.Restrict);
+        m.Entity<Payment>().HasIndex(p => p.BookingId).IsUnique();
     }
 }
